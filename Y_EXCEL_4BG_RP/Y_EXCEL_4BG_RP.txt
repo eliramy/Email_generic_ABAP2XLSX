@@ -1,0 +1,38 @@
+*&---------------------------------------------------------------------*
+*& Report Y_EXCEL_4BG_RP
+*&---------------------------------------------------------------------*
+REPORT y_excel_4bg_rp.
+
+INCLUDE y_excel_4bg_rp_top.
+INCLUDE y_excel_4bg_rp_sel.
+INCLUDE y_excel_4bg_rp_frm.
+
+AT SELECTION-SCREEN.
+  PERFORM check_param.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_var.
+
+  IF p_report IS INITIAL.
+    MESSAGE TEXT-i01 TYPE 'I'.
+  ELSE.
+    PERFORM variant_f4
+                  CHANGING
+                     p_var.
+  ENDIF.
+
+START-OF-SELECTION.
+
+  PERFORM call_prog
+                USING
+                  p_var
+               CHANGING
+                  gr_data.
+
+  IF gr_data IS NOT BOUND.
+    MESSAGE TEXT-i02 TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  PERFORM send_mail
+                USING
+                  gr_data.

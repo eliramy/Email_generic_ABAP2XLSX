@@ -1,0 +1,10 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_EXCEL_4BG_RP_SEL
+*&---------------------------------------------------------------------*
+
+PARAMETERS:
+  p_report TYPE rsvar-report,
+  p_var    TYPE rsvar-variant,
+  p_list   TYPE so_obj_nam,
+  p_sub    TYPE text30,
+  p_file_n TYPE text30.

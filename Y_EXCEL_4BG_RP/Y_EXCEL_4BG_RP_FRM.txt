@@ -1,0 +1,327 @@
+*&---------------------------------------------------------------------*
+*&  Include           Y_EXCEL_4BG_RP_FRM
+*&---------------------------------------------------------------------*
+*&      Form  VARIANT_F4
+*&---------------------------------------------------------------------*
+FORM variant_f4
+           CHANGING
+              cv_var TYPE rsvar-variant.
+
+  DATA:
+    l_dynnr   TYPE rsvar-dynnr  VALUE '1000',
+    l_variant TYPE rsvar-variant.
+
+  CALL FUNCTION 'RS_VARIANT_CATALOG'
+    EXPORTING
+      report              = p_report
+      dynnr               = l_dynnr
+      internal_call       = 'X'
+      variant             = l_variant
+    IMPORTING
+      sel_variant         = l_variant
+    EXCEPTIONS
+      no_report           = 01
+      report_not_existent = 02
+      report_not_supplied = 03.
+
+  IF sy-subrc NE 0.
+    MESSAGE e135(db) WITH 'RS_VARIANT_CATALOG' sy-subrc.
+  ENDIF.
+
+  IF sy-ucomm = 'CANC'.
+    RETURN.
+  ENDIF.
+
+  cv_var = l_variant.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CALL_PROG
+*&---------------------------------------------------------------------*
+FORM call_prog
+           USING
+             iv_var  TYPE rsvar-variant
+          CHANGING
+             cr_data TYPE REF TO data.
+
+  CALL FUNCTION 'Y_GET_EXTERNAL_DATA'
+    EXPORTING
+      iv_prog    = p_report
+      iv_variant = iv_var
+    IMPORTING
+      ev_data    = cr_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SEND_MAIL
+*&---------------------------------------------------------------------*
+FORM send_mail
+           USING
+             ir_data TYPE REF TO data.
+
+  DATA:
+    lv_message_sub  TYPE so_obj_des,
+    lt_message_body TYPE bcsy_text,
+    lt_recipient    TYPE rmps_recipient_bcs,
+    lt_file	        TYPE yyt_file.
+
+  DATA(lv_date) = sy-datum.
+  DATA(lv_time) = sy-uzeit.
+
+
+* Subject
+  PERFORM get_subject
+                  USING
+                    lv_date
+                    lv_time
+                 CHANGING
+                    lv_message_sub.
+
+  PERFORM get_body
+              CHANGING
+                 lt_message_body.
+
+* Send email
+  PERFORM get_distribution_list
+                           CHANGING
+                              lt_recipient[].
+
+* Attach file
+  PERFORM get_attach_file
+                      USING
+                        lv_date
+                        lv_time
+                        ir_data
+                     CHANGING
+                        lt_file[].
+
+
+  CALL METHOD y_send_mail=>send_mail
+    EXPORTING
+      iv_sender_user     = sy-uname
+      iv_message_subject = lv_message_sub
+      it_message_body    = lt_message_body
+      it_recipient       = lt_recipient
+      it_file            = lt_file.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_XML_TAB
+*&---------------------------------------------------------------------*
+FORM get_xml_tab
+             USING
+               ir_data TYPE REF TO data
+            CHANGING
+               ct_xml  TYPE solix_tab
+               cv_size TYPE i.
+
+  FIELD-SYMBOLS:
+  <fs_tab> TYPE ANY TABLE.
+
+  ASSIGN ir_data->* TO <fs_tab>.
+
+  TRY.
+      cl_salv_table=>factory( IMPORTING r_salv_table = DATA(lo_salv_table) " Basis Class Simple ALV Tables
+                              CHANGING  t_table      = <fs_tab> ).         " Internal table to display
+    CATCH cx_salv_msg.
+
+  ENDTRY.
+
+*  PERFORM set_columns
+*                 CHANGING
+*                    lo_salv_table.
+
+* Convert internal table to xml (format xlsx)
+  DATA(lv_xml) = lo_salv_table->to_xml( xml_type = if_salv_bs_xml=>c_type_xlsx ).
+
+* Size xml
+  cv_size = xstrlen( lv_xml ).
+
+* Convert xml xstring to internal table solix_tab
+  ct_xml = cl_bcs_convert=>xstring_to_solix( iv_xstring = lv_xml ).
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SUBJECT
+*&---------------------------------------------------------------------*
+FORM get_subject
+             USING
+               iv_date TYPE sy-datum
+               iv_time TYPE sy-uzeit
+            CHANGING
+               cv_message_sub TYPE so_obj_des.
+
+  DATA:
+    lv_date TYPE char10,
+    lv_time TYPE char5.
+
+  WRITE iv_date TO lv_date DD/MM/YYYY.
+  lv_time = iv_time(2) && ':' && iv_time+1(2).
+
+  cv_message_sub = p_sub && '_' && lv_date && '_' && lv_time.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DISTRIBUTION_LIST
+*&---------------------------------------------------------------------*
+FORM get_distribution_list
+                      CHANGING
+                         ct_recipient TYPE rmps_recipient_bcs.
+
+  TRY.
+      DATA(lo_recipient) = cl_distributionlist_bcs=>getu_persistent( i_dliname = p_list
+                                                                     i_private = space ).
+    CATCH cx_address_bcs INTO DATA(lo_exception).
+
+
+      DATA(lv_message) = lo_exception->get_longtext( ).
+
+      IF lv_message IS INITIAL.
+        lv_message = lo_exception->get_text( ).
+      ENDIF.
+
+      MESSAGE lv_message TYPE 'E'.
+
+  ENDTRY.
+
+  APPEND lo_recipient TO ct_recipient.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_ATTACH_FILE
+*&---------------------------------------------------------------------*
+FORM get_attach_file
+                 USING
+                   iv_date TYPE sy-datum
+                   iv_time TYPE sy-uzeit
+                   ir_data TYPE REF TO data
+                CHANGING
+                   ct_file TYPE yyt_file.
+
+  DATA:
+    lt_xml  TYPE solix_tab,
+    lv_size TYPE i.
+
+
+  PERFORM get_xml_tab
+                  USING
+                     ir_data
+                  CHANGING
+                     lt_xml[]
+                     lv_size.
+
+* Build file attributes
+  ct_file = VALUE #( ( attachment_type    = 'BIN'
+                       attachment_subject = p_file_n     &&
+                                            '_'          &&
+                                            iv_date+6(2) &&
+                                            iv_date+4(2) &&
+                                            iv_date(4)   &&
+                                            '_'          &&
+                                            iv_time(4)   &&
+                                            '.xlsx'
+                       t_file             = lt_xml
+                       attachment_size    = lv_size ) ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_BODY
+*&---------------------------------------------------------------------*
+FORM get_body
+         CHANGING
+            ct_message_body TYPE bcsy_text.
+
+  ct_message_body = VALUE #( ( line = TEXT-b01 && ` ` && sy-sysid && sy-mandt ) ) .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_COLUMNS
+*&---------------------------------------------------------------------*
+FORM set_columns
+            CHANGING
+               co_salv_table  TYPE REF TO cl_salv_table.
+
+  DATA:
+    lt_col_setting TYPE ycol_setting_t,
+    lo_column      TYPE REF TO cl_salv_column_table.
+
+
+  DATA(lo_columns) = co_salv_table->get_columns( ). "Get columns setting
+  lo_columns->set_optimize( ).               "Set optimize columns
+
+  LOOP AT lt_col_setting ASSIGNING FIELD-SYMBOL(<fs_col_setting>).
+
+    lo_column ?= lo_columns->get_column( <fs_col_setting>-col ).
+
+    CASE <fs_col_setting>-tech.
+      WHEN abap_true.
+        lo_column->set_technical( if_salv_c_bool_sap=>true ).
+    ENDCASE.
+
+    CASE <fs_col_setting>-hide.
+      WHEN abap_true.
+        lo_column->set_visible( if_salv_c_bool_sap=>false ).
+
+    ENDCASE.
+
+    CASE <fs_col_setting>-zero.
+      WHEN abap_true.
+        lo_column->set_zero( value = abap_true ).
+
+      WHEN abap_false.
+        lo_column->set_zero( value = abap_false ).
+    ENDCASE.
+
+    CASE <fs_col_setting>-hotspot.
+      WHEN abap_true.
+        TRY.
+            CALL METHOD lo_column->set_cell_type
+              EXPORTING
+                value = if_salv_c_cell_type=>hotspot.
+
+          CATCH cx_salv_data_error.
+        ENDTRY.
+    ENDCASE.
+
+    IF <fs_col_setting>-alignment IS NOT INITIAL.
+      CALL METHOD lo_column->set_alignment
+        EXPORTING
+          value = <fs_col_setting>-alignment.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_PARAM
+*&---------------------------------------------------------------------*
+FORM check_param .
+
+  IF p_report IS INITIAL.
+    SET CURSOR FIELD 'P_REPORT'.
+    MESSAGE TEXT-e01 TYPE 'E'.
+  ENDIF.
+
+  IF p_var IS INITIAL.
+    SET CURSOR FIELD 'P_VAR'.
+    MESSAGE TEXT-e02 TYPE 'E'.
+  ENDIF.
+
+
+  IF p_list IS INITIAL.
+    SET CURSOR FIELD 'P_LIST'.
+    MESSAGE TEXT-e05 TYPE 'E'.
+  ENDIF.
+
+  IF p_sub IS INITIAL.
+    SET CURSOR FIELD 'P_SUB'.
+    MESSAGE TEXT-e03 TYPE 'E'.
+  ENDIF.
+
+  IF p_file_n IS INITIAL.
+    SET CURSOR FIELD 'P_FILE_N'.
+    MESSAGE TEXT-e04 TYPE 'E'.
+  ENDIF.
+
+ENDFORM.
