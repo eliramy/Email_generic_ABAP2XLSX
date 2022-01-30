@@ -42,14 +42,16 @@ FORM call_prog
            USING
              iv_var  TYPE rsvar-variant
           CHANGING
-             cr_data TYPE REF TO data.
+             cr_data TYPE REF TO data
+             cs_metadata TYPE cl_salv_bs_runtime_info=>s_type_metadata.
 
   CALL FUNCTION 'Y_GET_EXTERNAL_DATA'
     EXPORTING
-      iv_prog    = p_report
-      iv_variant = iv_var
+      iv_prog     = p_report
+      iv_variant  = iv_var
     IMPORTING
-      ev_data    = cr_data.
+      ev_data     = cr_data
+      es_metadata = cs_metadata.
 
 ENDFORM.
 *&---------------------------------------------------------------------*
@@ -57,7 +59,8 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM send_mail
            USING
-             ir_data TYPE REF TO data.
+             ir_data TYPE REF TO data
+             is_metadata TYPE cl_salv_bs_runtime_info=>s_type_metadata.
 
   DATA:
     lv_message_sub  TYPE so_obj_des,
@@ -92,6 +95,7 @@ FORM send_mail
                         lv_date
                         lv_time
                         ir_data
+                        is_metadata
                      CHANGING
                         lt_file[].
 
@@ -111,6 +115,7 @@ ENDFORM.
 FORM get_xml_tab
              USING
                ir_data TYPE REF TO data
+               is_metadata TYPE cl_salv_bs_runtime_info=>s_type_metadata
             CHANGING
                ct_xml  TYPE solix_tab
                cv_size TYPE i.
@@ -127,9 +132,11 @@ FORM get_xml_tab
 
   ENDTRY.
 
-*  PERFORM set_columns
-*                 CHANGING
-*                    lo_salv_table.
+  PERFORM set_columns
+                  USING
+                    is_metadata
+                 CHANGING
+                    lo_salv_table.
 
 * Convert internal table to xml (format xlsx)
   DATA(lv_xml) = lo_salv_table->to_xml( xml_type = if_salv_bs_xml=>c_type_xlsx ).
@@ -196,6 +203,7 @@ FORM get_attach_file
                    iv_date TYPE sy-datum
                    iv_time TYPE sy-uzeit
                    ir_data TYPE REF TO data
+                   is_metadata TYPE cl_salv_bs_runtime_info=>s_type_metadata
                 CHANGING
                    ct_file TYPE yyt_file.
 
@@ -207,6 +215,7 @@ FORM get_attach_file
   PERFORM get_xml_tab
                   USING
                      ir_data
+                     is_metadata
                   CHANGING
                      lt_xml[]
                      lv_size.
@@ -239,6 +248,8 @@ ENDFORM.
 *&      Form  SET_COLUMNS
 *&---------------------------------------------------------------------*
 FORM set_columns
+             USING
+               is_metadata    TYPE cl_salv_bs_runtime_info=>s_type_metadata
             CHANGING
                co_salv_table  TYPE REF TO cl_salv_table.
 
@@ -250,27 +261,28 @@ FORM set_columns
   DATA(lo_columns) = co_salv_table->get_columns( ). "Get columns setting
   lo_columns->set_optimize( ).               "Set optimize columns
 
-  LOOP AT lt_col_setting ASSIGNING FIELD-SYMBOL(<fs_col_setting>).
+  LOOP AT is_metadata-t_fcat ASSIGNING FIELD-SYMBOL(<fs_col_setting>).
 
-    lo_column ?= lo_columns->get_column( <fs_col_setting>-col ).
+    lo_column ?= lo_columns->get_column( <fs_col_setting>-fieldname ).
 
     CASE <fs_col_setting>-tech.
       WHEN abap_true.
         lo_column->set_technical( if_salv_c_bool_sap=>true ).
     ENDCASE.
 
-    CASE <fs_col_setting>-hide.
-      WHEN abap_true.
-        lo_column->set_visible( if_salv_c_bool_sap=>false ).
+*    CASE <fs_col_setting>-hide.
+*      WHEN abap_true.
+*        lo_column->set_visible( if_salv_c_bool_sap=>false ).
+*
+*    ENDCASE.
 
-    ENDCASE.
-
-    CASE <fs_col_setting>-zero.
+    CASE <fs_col_setting>-no_zero.
       WHEN abap_true.
-        lo_column->set_zero( value = abap_true ).
+        lo_column->set_zero( value = abap_false ).
 
       WHEN abap_false.
-        lo_column->set_zero( value = abap_false ).
+        lo_column->set_zero( value = abap_true ).
+
     ENDCASE.
 
     CASE <fs_col_setting>-hotspot.
@@ -284,11 +296,11 @@ FORM set_columns
         ENDTRY.
     ENDCASE.
 
-    IF <fs_col_setting>-alignment IS NOT INITIAL.
-      CALL METHOD lo_column->set_alignment
-        EXPORTING
-          value = <fs_col_setting>-alignment.
-    ENDIF.
+*    IF <fs_col_setting>-JUST IS NOT INITIAL.
+*      CALL METHOD lo_column->set_alignment
+*        EXPORTING
+*          value = <fs_col_setting>-alignment.
+*    ENDIF.
 
   ENDLOOP.
 
