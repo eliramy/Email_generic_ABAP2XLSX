@@ -3,4 +3,5 @@
 *&---------------------------------------------------------------------*
 
 DATA:
-  gr_data TYPE REF TO data.
+  gr_data     TYPE REF TO data,
+  gs_metadata TYPE  cl_salv_bs_runtime_info=>s_type_metadata.
