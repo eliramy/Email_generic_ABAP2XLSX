@@ -5,6 +5,6 @@
 PARAMETERS:
   p_report TYPE rsvar-report,
   p_var    TYPE rsvar-variant,
-  p_list   TYPE so_obj_nam,
+  p_list   TYPE so_obj_nam MATCHCODE OBJECT yshhr_pub_list,
   p_sub    TYPE text30,
   p_file_n TYPE text30.
