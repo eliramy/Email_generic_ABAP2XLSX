@@ -26,7 +26,8 @@ START-OF-SELECTION.
                 USING
                   p_var
                CHANGING
-                  gr_data.
+                  gr_data
+                  gs_metadata.
 
   IF gr_data IS NOT BOUND.
     MESSAGE TEXT-i02 TYPE 'I'.
@@ -35,4 +36,5 @@ START-OF-SELECTION.
 
   PERFORM send_mail
                 USING
-                  gr_data.
+                  gr_data
+                  gs_metadata.
