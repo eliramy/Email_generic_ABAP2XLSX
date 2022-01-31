@@ -256,10 +256,12 @@ FORM set_columns
   DATA:
     lo_column TYPE REF TO cl_salv_column_table.
 
+* Get columns setting object
+  DATA(lo_columns) = co_salv_table->get_columns( ).
+* Set optimize columns
+  lo_columns->set_optimize( ).
 
-  DATA(lo_columns) = co_salv_table->get_columns( ). "Get columns setting
-  lo_columns->set_optimize( ).                      "Set optimize columns
-
+* Get aggregations object
   DATA(lo_aggrs) = co_salv_table->get_aggregations( ). "Get Aggregations
 
   LOOP AT is_metadata-t_fcat ASSIGNING FIELD-SYMBOL(<fs_col_setting>).
@@ -271,6 +273,17 @@ FORM set_columns
 
     ENDTRY.
 
+    IF <fs_col_setting>-fieldname = 'LIGHTS'
+    OR <fs_col_setting>-fieldname = 'EXCEPTION'. "Set Exception Field
+
+      TRY.
+          lo_columns->set_exception_column( value = <fs_col_setting>-fieldname ).
+
+        CATCH cx_salv_data_error .                      "#EC NO_HANDLER
+
+      ENDTRY.
+
+    ENDIF.
 
     CASE <fs_col_setting>-tech.
       WHEN abap_true.
@@ -301,6 +314,12 @@ FORM set_columns
 
           CATCH cx_salv_data_error.
         ENDTRY.
+    ENDCASE.
+
+    CASE <fs_col_setting>-icon.
+      WHEN abap_true.
+        lo_column->set_icon( if_salv_c_bool_sap=>true ).
+
     ENDCASE.
 
     IF <fs_col_setting>-just IS NOT INITIAL.
