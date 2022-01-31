@@ -296,11 +296,23 @@ FORM set_columns
         ENDTRY.
     ENDCASE.
 
-*    IF <fs_col_setting>-JUST IS NOT INITIAL.
-*      CALL METHOD lo_column->set_alignment
-*        EXPORTING
-*          value = <fs_col_setting>-alignment.
-*    ENDIF.
+    IF <fs_col_setting>-just IS NOT INITIAL.
+         CASE <fs_col_setting>-just.
+            WHEN  'L'.
+              DATA(lv_alignment) = if_salv_c_alignment=>left.
+
+             WHEN 'R'.
+               lv_alignment = if_salv_c_alignment=>right.
+
+             WHEN OTHERS.
+               lv_alignment = if_salv_c_alignment=>centered.
+             
+             ENDCASE.
+
+             CALL METHOD lo_column->set_alignment
+               EXPORTING
+                 value = lv_alignment.
+     ENDIF.
 
   ENDLOOP.
 
