@@ -270,11 +270,11 @@ FORM set_columns
         lo_column->set_technical( if_salv_c_bool_sap=>true ).
     ENDCASE.
 
-*    CASE <fs_col_setting>-hide.
-*      WHEN abap_true.
-*        lo_column->set_visible( if_salv_c_bool_sap=>false ).
-*
-*    ENDCASE.
+    CASE <fs_col_setting>-no_out.
+      WHEN abap_true.
+        lo_column->set_visible( if_salv_c_bool_sap=>false ).
+
+    ENDCASE.
 
     CASE <fs_col_setting>-no_zero.
       WHEN abap_true.
