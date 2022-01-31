@@ -1,6 +1,6 @@
 # Email_generic_ABAP2XLSX
 External generic program to get alv report and send it as attach excel file.
-Also get metadata of ALV report to hide\display columns in excel file. 
+Also get metadata of ALV report to hide\display ,sumn and others options columns for the excel file. 
 
 Prerequisites:
 
