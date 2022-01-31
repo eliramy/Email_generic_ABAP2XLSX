@@ -6,4 +6,5 @@ Prerequisites:
 
 1) Implement repository: https://github.com/eliramy/FM-Y_GET_EXTERNAL_DATA
 2) Implement repository: https://github.com/eliramy/ABAP_Sending_Email
+3) If needed implement note 2581570 - ALV export to Excel - exception images are not supported
 
