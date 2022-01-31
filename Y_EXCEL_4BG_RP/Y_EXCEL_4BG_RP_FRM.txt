@@ -254,8 +254,7 @@ FORM set_columns
                co_salv_table  TYPE REF TO cl_salv_table.
 
   DATA:
-    lt_col_setting TYPE ycol_setting_t,
-    lo_column      TYPE REF TO cl_salv_column_table.
+    lo_column TYPE REF TO cl_salv_column_table.
 
 
   DATA(lo_columns) = co_salv_table->get_columns( ). "Get columns setting
@@ -286,10 +285,10 @@ FORM set_columns
 
     CASE <fs_col_setting>-no_zero.
       WHEN abap_true.
-        lo_column->set_zero( value = abap_false ).
+        lo_column->set_zero( value = if_salv_c_bool_sap=>false ).
 
       WHEN abap_false.
-        lo_column->set_zero( value = abap_true ).
+        lo_column->set_zero( value = if_salv_c_bool_sap=>true ).
 
     ENDCASE.
 
@@ -335,6 +334,15 @@ FORM set_columns
           CATCH cx_salv_existing .                      "#EC NO_HANDLER
 
         ENDTRY.
+
+    ENDCASE.
+
+    CASE <fs_col_setting>-symbol.
+      WHEN abap_true.
+
+        CALL METHOD lo_column->set_symbol
+          EXPORTING
+            value = if_salv_c_bool_sap=>true.
 
     ENDCASE.
 
