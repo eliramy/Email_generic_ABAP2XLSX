@@ -348,6 +348,82 @@ FORM set_columns
 
   ENDLOOP.
 
+  IF is_metadata-t_filter[] IS NOT INITIAL.
+
+    DATA(lo_filters) = co_salv_table->get_filters( ).
+
+    LOOP AT is_metadata-t_filter ASSIGNING FIELD-SYMBOL(<fs_filter>).
+
+      TRY.
+          CALL METHOD lo_filters->add_filter
+            EXPORTING
+              columnname = <fs_filter>-fieldname
+              sign       = <fs_filter>-sign
+              option     = <fs_filter>-option
+              low        = <fs_filter>-low
+              high       = <fs_filter>-high.
+
+        CATCH cx_salv_not_found .                       "#EC NO_HANDLER
+        CATCH cx_salv_data_error .                      "#EC NO_HANDLER
+        CATCH cx_salv_existing .                        "#EC NO_HANDLER
+
+      ENDTRY.
+
+    ENDLOOP.
+
+  ENDIF.
+
+  IF is_metadata-t_sort[] IS NOT INITIAL.
+
+    DATA:
+      lv_position TYPE i.
+
+    DATA(lo_sorts) = co_salv_table->get_sorts( ).
+
+    LOOP AT is_metadata-t_sort ASSIGNING FIELD-SYMBOL(<fs_sort>).
+
+      IF <fs_sort>-up = abap_true.
+        DATA(lv_sequence) = if_salv_c_sort=>sort_up.
+
+      ELSEIF <fs_sort>-down = abap_true.
+        lv_sequence = if_salv_c_sort=>sort_down.
+
+      ELSE.
+
+        lv_sequence = if_salv_c_sort=>sort_none.
+
+      ENDIF.
+
+      lv_position = <fs_sort>-spos.
+
+* grouping fields
+      CASE <fs_sort>-subtot.
+        WHEN abap_true.
+          DATA(lv_group) = if_salv_c_sort=>group_with_underline.
+
+        WHEN abap_false.
+          lv_group = if_salv_c_sort=>group_none.
+      ENDCASE.
+
+      TRY.
+          CALL METHOD lo_sorts->add_sort
+            EXPORTING
+              columnname = <fs_sort>-fieldname
+              position   = lv_position
+              sequence   = lv_sequence
+              subtotal   = <fs_sort>-subtot
+              group      = lv_group
+              obligatory = <fs_sort>-obligatory.
+
+        CATCH cx_salv_not_found.                        "#EC NO_HANDLER
+        CATCH cx_salv_existing .                        "#EC NO_HANDLER
+        CATCH cx_salv_data_error .                      "#EC NO_HANDLER
+      ENDTRY.
+
+    ENDLOOP.
+
+  ENDIF.
+
 ENDFORM.
 *&---------------------------------------------------------------------*
 *&      Form  CHECK_PARAM
