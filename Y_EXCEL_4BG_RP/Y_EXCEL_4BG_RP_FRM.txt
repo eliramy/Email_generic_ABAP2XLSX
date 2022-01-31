@@ -259,11 +259,19 @@ FORM set_columns
 
 
   DATA(lo_columns) = co_salv_table->get_columns( ). "Get columns setting
-  lo_columns->set_optimize( ).               "Set optimize columns
+  lo_columns->set_optimize( ).                      "Set optimize columns
+
+  DATA(lo_aggrs) = co_salv_table->get_aggregations( ). "Get Aggregations
 
   LOOP AT is_metadata-t_fcat ASSIGNING FIELD-SYMBOL(<fs_col_setting>).
 
-    lo_column ?= lo_columns->get_column( <fs_col_setting>-fieldname ).
+    TRY.
+        lo_column ?= lo_columns->get_column( <fs_col_setting>-fieldname ).
+
+      CATCH cx_salv_not_found .
+
+    ENDTRY.
+
 
     CASE <fs_col_setting>-tech.
       WHEN abap_true.
@@ -297,22 +305,38 @@ FORM set_columns
     ENDCASE.
 
     IF <fs_col_setting>-just IS NOT INITIAL.
-         CASE <fs_col_setting>-just.
-            WHEN  'L'.
-              DATA(lv_alignment) = if_salv_c_alignment=>left.
+      CASE <fs_col_setting>-just.
+        WHEN  'L'.
+          DATA(lv_alignment) = if_salv_c_alignment=>left.
 
-             WHEN 'R'.
-               lv_alignment = if_salv_c_alignment=>right.
+        WHEN 'R'.
+          lv_alignment = if_salv_c_alignment=>right.
 
-             WHEN OTHERS.
-               lv_alignment = if_salv_c_alignment=>centered.
-             
-             ENDCASE.
+        WHEN OTHERS.
+          lv_alignment = if_salv_c_alignment=>centered.
+      ENDCASE.
 
-             CALL METHOD lo_column->set_alignment
-               EXPORTING
-                 value = lv_alignment.
-     ENDIF.
+      CALL METHOD lo_column->set_alignment
+        EXPORTING
+          value = lv_alignment.
+    ENDIF.
+
+    CASE <fs_col_setting>-do_sum.
+      WHEN abap_true.
+
+        TRY.
+            CALL METHOD lo_aggrs->add_aggregation
+              EXPORTING
+                columnname  = <fs_col_setting>-fieldname
+                aggregation = if_salv_c_aggregation=>total.
+
+          CATCH cx_salv_data_error .                    "#EC NO_HANDLER
+          CATCH cx_salv_not_found .                     "#EC NO_HANDLER
+          CATCH cx_salv_existing .                      "#EC NO_HANDLER
+
+        ENDTRY.
+
+    ENDCASE.
 
   ENDLOOP.
 
