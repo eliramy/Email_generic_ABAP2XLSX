@@ -100,13 +100,11 @@ FORM send_mail
                         lt_file[].
 
 
-  CALL METHOD y_send_mail=>send_mail
-    EXPORTING
-      iv_sender_user     = sy-uname
-      iv_message_subject = lv_message_sub
-      it_message_body    = lt_message_body
-      it_recipient       = lt_recipient
-      it_file            = lt_file.
+  y_send_mail=>send_mail( iv_sender_user     = sy-uname
+                          iv_message_subject = lv_message_sub
+                          it_message_body    = lt_message_body
+                          it_recipient       = lt_recipient
+                          it_file            = lt_file ).
 
 ENDFORM.
 *&---------------------------------------------------------------------*
@@ -273,6 +271,10 @@ FORM set_columns
 
     ENDTRY.
 
+    lo_columns->set_column_position(
+        columnname = <fs_col_setting>-fieldname    " ALV Control: Field Name of Internal Table Field
+        position   = <fs_col_setting>-col_pos ).
+
     IF <fs_col_setting>-fieldname = 'LIGHTS'
     OR <fs_col_setting>-fieldname = 'EXCEPTION'. "Set Exception Field
 
@@ -308,9 +310,7 @@ FORM set_columns
     CASE <fs_col_setting>-hotspot.
       WHEN abap_true.
         TRY.
-            CALL METHOD lo_column->set_cell_type
-              EXPORTING
-                value = if_salv_c_cell_type=>hotspot.
+            lo_column->set_cell_type( value = if_salv_c_cell_type=>hotspot ).
 
           CATCH cx_salv_data_error.
         ENDTRY.
@@ -334,19 +334,15 @@ FORM set_columns
           lv_alignment = if_salv_c_alignment=>centered.
       ENDCASE.
 
-      CALL METHOD lo_column->set_alignment
-        EXPORTING
-          value = lv_alignment.
+      lo_column->set_alignment( value = lv_alignment ).
     ENDIF.
 
     CASE <fs_col_setting>-do_sum.
       WHEN abap_true.
 
         TRY.
-            CALL METHOD lo_aggrs->add_aggregation
-              EXPORTING
-                columnname  = <fs_col_setting>-fieldname
-                aggregation = if_salv_c_aggregation=>total.
+            lo_aggrs->add_aggregation( columnname  = <fs_col_setting>-fieldname
+                                       aggregation = if_salv_c_aggregation=>total ).
 
           CATCH cx_salv_data_error .                    "#EC NO_HANDLER
           CATCH cx_salv_not_found .                     "#EC NO_HANDLER
@@ -359,9 +355,7 @@ FORM set_columns
     CASE <fs_col_setting>-symbol.
       WHEN abap_true.
 
-        CALL METHOD lo_column->set_symbol
-          EXPORTING
-            value = if_salv_c_bool_sap=>true.
+        lo_column->set_symbol( value = if_salv_c_bool_sap=>true ).
 
     ENDCASE.
 
@@ -374,13 +368,12 @@ FORM set_columns
     LOOP AT is_metadata-t_filter ASSIGNING FIELD-SYMBOL(<fs_filter>).
 
       TRY.
-          CALL METHOD lo_filters->add_filter
-            EXPORTING
+          lo_filters->add_filter(
               columnname = <fs_filter>-fieldname
               sign       = <fs_filter>-sign
               option     = <fs_filter>-option
               low        = <fs_filter>-low
-              high       = <fs_filter>-high.
+              high       = <fs_filter>-high ).
 
         CATCH cx_salv_not_found .                       "#EC NO_HANDLER
         CATCH cx_salv_data_error .                      "#EC NO_HANDLER
@@ -425,14 +418,13 @@ FORM set_columns
       ENDCASE.
 
       TRY.
-          CALL METHOD lo_sorts->add_sort
-            EXPORTING
+          lo_sorts->add_sort(
               columnname = <fs_sort>-fieldname
               position   = lv_position
               sequence   = lv_sequence
               subtotal   = <fs_sort>-subtot
               group      = lv_group
-              obligatory = <fs_sort>-obligatory.
+              obligatory = <fs_sort>-obligatory ).
 
         CATCH cx_salv_not_found.                        "#EC NO_HANDLER
         CATCH cx_salv_existing .                        "#EC NO_HANDLER
